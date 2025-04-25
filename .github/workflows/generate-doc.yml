@@ -67,3 +67,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./doc
+          publish_branch: gh-pages
+          force_orphan: true  # 💡初回作成で強制的に新ブランチにする
