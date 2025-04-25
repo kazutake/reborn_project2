@@ -1,83 +1,67 @@
-name: Generate and Deploy Quarto Documentation
-
-on:
-  workflow_dispatch:
+name: Generate and Deploy Quarto Docs
+on: workflow_dispatch
 
 jobs:
-  build-deploy:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
+    # 1. 取得・準備
+    - uses: actions/checkout@v3
 
-      - name: Install OpenAI SDK (v0.28)
-        run: pip install openai==0.28
+    - uses: actions/setup-python@v4
+      with: { python-version: "3.11" }
 
-      - name: Generate index.qmd with ChatGPT
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          mkdir -p site
+    - run: pip install openai==0.28
 
-          python3 - <<'PY'
-          import os, textwrap, openai
-          openai.api_key = os.getenv("OPENAI_API_KEY")
+    # 2. index.qmd を ChatGPT で生成
+    - name: Create index.qmd
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        mkdir -p site
+        python - <<'PY'
+import os, openai, textwrap, json
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-          prompt = textwrap.dedent("""
-          このプロジェクトは Fortran で記述された数値解析ソフトウェアです。
-          以下の内容に沿って、Quarto形式のユーザーガイドを作成してください：
+prompt = textwrap.dedent("""
+プロジェクト名 reborn_project2 のユーザーガイドを
+Quarto (Markdown) 形式で作ってください。
+""")
 
-          - プロジェクト名：reborn_project2
-          - 概要：2次元流れ解析、地形変化シミュレーション
-          - ディレクトリ構成：src/, lib/, nays2dh/
-          - 使用方法：コマンドライン実行と入力ファイルの指定
-          - 出力：可視化ツールと連携可能なCGNS出力
-          - 開発者向け情報：ビルド手順、依存ライブラリ
+resp = openai.ChatCompletion.create(
+  model="gpt-3.5-turbo",
+  messages=[{"role":"user","content":prompt}]
+)
 
-          Markdown（.qmd）形式で出力してください。
-          """)
+with open("site/index.qmd", "w", encoding="utf-8") as f:
+    f.write(resp.choices[0].message.content)
+PY
 
-          resp = openai.ChatCompletion.create(
-              model="gpt-3.5-turbo",
-              messages=[
-                  {"role": "system", "content": "あなたは技術文書の専門家です。"},
-                  {"role": "user", "content": prompt}
-              ]
-          )
+    # 3. Quarto 設定ファイルを明示的に生成
+    - name: Create _quarto.yml
+      run: |
+        mkdir -p site
+        cat > site/_quarto.yml <<'YML'
+project:
+  type: website
+format:
+  html:
+    toc: true
+    theme: cosmo
+YML
 
-          with open("site/index.qmd", "w", encoding="utf-8") as f:
-              f.write(resp.choices[0].message.content)
-          PY
+    # 4. ビルド & デプロイ
+    - uses: quarto-dev/quarto-actions/setup@v2
 
-          # Quarto プロジェクト設定
-          printf '%s\n' \
-            'project:' \
-            '  type: website' \
-            '' \
-            'format:' \
-            '  html:' \
-            '    toc: true' \
-            '    theme: cosmo' \
-            > site/quarto.yml
+    - name: Render with Quarto
+      run: |
+        cd site
+        quarto render index.qmd
 
-      - name: Install Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
-
-      - name: Render Quarto site
-        run: |
-          cd site
-          quarto render .
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site/_site
-          publish_branch: gh-pages
-          force_orphan: true
+    - uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: site/_site
+        publish_branch: gh-pages
+        force_orphan: true
