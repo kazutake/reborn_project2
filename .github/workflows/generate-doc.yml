@@ -17,7 +17,7 @@ jobs:
           python-version: '3.11'
 
       - name: 必要なパッケージをインストール
-        run: pip install openai
+        run: pip install openai==0.28
 
       - name: ChatGPT を使用して Quarto ドキュメントを生成
         run: |
