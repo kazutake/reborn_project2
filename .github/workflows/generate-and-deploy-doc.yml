@@ -5,44 +5,44 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
 
-    # 1. 取得・準備
-    - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
-    - uses: actions/setup-python@v4
-      with: { python-version: "3.11" }
+      - run: pip install openai==0.28
+        name: Install OpenAI SDK
 
-    - run: pip install openai==0.28
-
-    # 2. index.qmd を ChatGPT で生成
-    - name: Create index.qmd
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      run: |
-        mkdir -p site
-        python - <<'PY'
-import os, openai, textwrap, json
+      # ---------------- ChatGPT で index.qmd 生成 ----------------
+      - name: Create index.qmd
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          mkdir -p site
+          python <<'PY'
+import os, textwrap, openai
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 prompt = textwrap.dedent("""
-プロジェクト名 reborn_project2 のユーザーガイドを
-Quarto (Markdown) 形式で作ってください。
+プロジェクト reborn_project2 のユーザーガイドを
+Quarto (Markdown) 形式で出力してください。
 """)
 
 resp = openai.ChatCompletion.create(
-  model="gpt-3.5-turbo",
-  messages=[{"role":"user","content":prompt}]
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": prompt}]
 )
 
 with open("site/index.qmd", "w", encoding="utf-8") as f:
     f.write(resp.choices[0].message.content)
 PY
 
-    # 3. Quarto 設定ファイルを明示的に生成
-    - name: Create _quarto.yml
-      run: |
-        mkdir -p site
-        cat > site/_quarto.yml <<'YML'
+      # ---------------- Quarto 設定ファイル ----------------
+      - name: Create _quarto.yml
+        run: |
+          mkdir -p site
+          cat > site/_quarto.yml <<'YML'
 project:
   type: website
 format:
@@ -51,17 +51,20 @@ format:
     theme: cosmo
 YML
 
-    # 4. ビルド & デプロイ
-    - uses: quarto-dev/quarto-actions/setup@v2
+      # ---------------- Quarto でビルド ----------------
+      - uses: quarto-dev/quarto-actions/setup@v2
+        name: Install Quarto
 
-    - name: Render with Quarto
-      run: |
-        cd site
-        quarto render index.qmd
+      - name: Render site
+        run: |
+          cd site
+          quarto render index.qmd
 
-    - uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: site/_site
-        publish_branch: gh-pages
-        force_orphan: true
+      # ---------------- GitHub Pages へ公開 ----------------
+      - uses: peaceiris/actions-gh-pages@v3
+        name: Deploy to GitHub Pages
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site/_site
+          publish_branch: gh-pages
+          force_orphan: true
