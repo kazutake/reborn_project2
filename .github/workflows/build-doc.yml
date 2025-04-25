@@ -1,0 +1,55 @@
+name: Build and Deploy Quarto Docs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install openai==0.28
+
+      - name: Generate Quarto documentation using ChatGPT
+        run: |
+          mkdir -p site
+          python3 <<EOF
+          import openai, os
+          openai.api_key = os.getenv("OPENAI_API_KEY")
+          res = openai.ChatCompletion.create(
+              model="gpt-3.5-turbo",
+              messages=[
+                  {"role": "system", "content": "You are a technical documentation assistant."},
+                  {"role": "user", "content": "以下のFortranプロジェクト reborn_project2 の説明書をQuarto形式で作ってください。"}
+              ]
+          )
+          with open("site/index.qmd", "w") as f:
+              f.write(res.choices[0].message.content)
+          EOF
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Install Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render site
+        run: |
+          cd site
+          quarto render .
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site/_site
+          publish_branch: gh-pages
+          force_orphan: true
