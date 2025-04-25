@@ -23,38 +23,36 @@ jobs:
         run: |
           mkdir -p site
           python3 <<EOF
+import openai, os
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-          import openai, os
-          openai.api_key = os.getenv("OPENAI_API_KEY")
-          
-          prompt = """
-          このプロジェクトは Fortran で記述された数値解析ソフトウェアです。
-          以下の内容に沿って、Quarto形式のユーザーガイドを作成してください：
-          
-          - プロジェクト名：reborn_project2
-          - 概要：2次元流れ解析、地形変化シミュレーション
-          - ディレクトリ構成：src/, lib/, nays2dh/
-          - 使用方法：コマンドライン実行と入力ファイルの指定
-          - 出力：可視化ツールと連携可能なCGNS出力
-          - 開発者向け情報：ビルド手順、依存ライブラリ
-          
-          Markdown（.qmd）形式で出力してください。
-          """
-          
-          res = openai.ChatCompletion.create(
-              model="gpt-3.5-turbo",
-              messages=[
-                  {"role": "system", "content": "あなたは技術文書の専門家です。"},
-                  {"role": "user", "content": prompt}
-              ]
-          )
-          
-          content = res.choices[0].message.content
+prompt = """
+このプロジェクトは Fortran で記述された数値解析ソフトウェアです。
+以下の内容に沿って、Quarto形式のユーザーガイドを作成してください：
+
+- プロジェクト名：reborn_project2
+- 概要：2次元流れ解析、地形変化シミュレーション
+- ディレクトリ構成：src/, lib/, nays2dh/
+- 使用方法：コマンドライン実行と入力ファイルの指定
+- 出力：可視化ツールと連携可能なCGNS出力
+- 開発者向け情報：ビルド手順、依存ライブラリ
+
+Markdown（.qmd）形式で出力してください。
+"""
+
+res = openai.ChatCompletion.create(
+    model="gpt-3.5-turbo",
+    messages=[
+        {"role": "system", "content": "あなたは技術文書の専門家です。"},
+        {"role": "user", "content": prompt}
+    ]
+)
+
+content = res.choices[0].message.content
 
 with open("site/index.qmd", "w") as f:
     f.write(content)
 EOF
-
           echo "project:
   type: website
 
@@ -62,7 +60,7 @@ format:
   html:
     toc: true
     theme: cosmo
-  " > site/quarto.yml
+" > site/quarto.yml
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
