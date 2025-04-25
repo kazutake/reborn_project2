@@ -8,18 +8,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🧾 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: 📦 Install OpenAI SDK (v0.28)
+      - name: Install OpenAI SDK (v0.28)
         run: pip install openai==0.28
 
-      - name: 🤖 Generate Quarto documentation with ChatGPT
+      - name: Generate Quarto documentation with ChatGPT
         run: |
           mkdir -p site
           python3 <<EOF
@@ -54,7 +54,6 @@ jobs:
               f.write(content)
           EOF
 
-          # Create Quarto project config
           echo "project:
   type: website
 
@@ -66,15 +65,15 @@ format:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      - name: 🧰 Install Quarto
+      - name: Install Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: 🏗 Render Quarto site
+      - name: Render Quarto site
         run: |
           cd site
           quarto render .
 
-      - name: 🚀 Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
