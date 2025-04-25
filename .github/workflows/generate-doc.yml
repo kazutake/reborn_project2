@@ -1,0 +1,69 @@
+name: Generate Documentation with ChatGPT
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-doc:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v3
+
+      - name: Python 環境をセットアップ
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 必要なパッケージをインストール
+        run: pip install openai
+
+      - name: ChatGPT を使用して Quarto ドキュメントを生成
+        run: |
+          python3 <<EOF
+          import openai
+          import os
+
+          openai.api_key = os.getenv("OPENAI_API_KEY")
+
+          prompt = """
+          以下の Fortran プロジェクトの説明書を Quarto 形式（.qmd）で作成してください。
+          - プロジェクト名: reborn_project
+          - 概要: Fortran 製の数値解析ソフトウェア
+          - ディレクトリ構成: src/, lib/, nays2dh/
+          - 主な機能: 2次元流れ解析、地形変化シミュレーション
+          - 使用方法: コマンドラインからの実行、入力ファイルの指定
+          - 出力: 結果ファイルの生成、可視化ツールとの連携
+          """
+
+          response = openai.ChatCompletion.create(
+              model="gpt-4",
+              messages=[
+                  {"role": "system", "content": "あなたは技術文書の専門家です。"},
+                  {"role": "user", "content": prompt}
+              ]
+          )
+
+          content = response['choices'][0]['message']['content']
+
+          os.makedirs("doc", exist_ok=True)
+          with open("doc/user_guide.qmd", "w", encoding="utf-8") as f:
+              f.write(content)
+          EOF
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Quarto をインストール
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Quarto ドキュメントを HTML に変換
+        run: |
+          cd doc
+          quarto render user_guide.qmd --to html
+
+      - name: GitHub Pages にデプロイ
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./doc
