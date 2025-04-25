@@ -14,23 +14,21 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install OpenAI SDK (v0.28)
         run: pip install openai==0.28
 
-      - name: Generate Quarto documentation with ChatGPT
+      - name: Generate index.qmd with ChatGPT
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           mkdir -p site
-
-          python3 <<'PY'
-import openai, os
-
+          python3 - <<'PY'
+import os, openai, textwrap, json
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-prompt = """
+prompt = textwrap.dedent("""
 このプロジェクトは Fortran で記述された数値解析ソフトウェアです。
 以下の内容に沿って、Quarto形式のユーザーガイドを作成してください：
 
@@ -42,30 +40,31 @@ prompt = """
 - 開発者向け情報：ビルド手順、依存ライブラリ
 
 Markdown（.qmd）形式で出力してください。
-"""
+""")
 
 response = openai.ChatCompletion.create(
     model="gpt-3.5-turbo",
     messages=[
         {"role": "system", "content": "あなたは技術文書の専門家です。"},
-        {"role": "user",   "content": prompt}
+        {"role": "user", "content": prompt}
     ]
 )
-
 with open("site/index.qmd", "w", encoding="utf-8") as f:
     f.write(response.choices[0].message.content)
 PY
 
-          # Quarto プロジェクト設定ファイルを作成
-          cat > site/quarto.yml <<'EOF'
-project:
-  type: website
-
-format:
-  html:
-    toc: true
-    theme: cosmo
-EOF
+      - name: Create Quarto project file
+        run: |
+          mkdir -p site
+          printf '%s\n' \
+            'project:' \
+            '  type: website' \
+            '' \
+            'format:' \
+            '  html:' \
+            '    toc: true' \
+            '    theme: cosmo' \
+            > site/quarto.yml
 
       - name: Install Quarto
         uses: quarto-dev/quarto-actions/setup@v2
