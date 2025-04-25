@@ -24,38 +24,38 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           mkdir -p site
+
           python3 - <<'PY'
-import os, openai, textwrap, json
-openai.api_key = os.getenv("OPENAI_API_KEY")
+          import os, textwrap, openai
+          openai.api_key = os.getenv("OPENAI_API_KEY")
 
-prompt = textwrap.dedent("""
-このプロジェクトは Fortran で記述された数値解析ソフトウェアです。
-以下の内容に沿って、Quarto形式のユーザーガイドを作成してください：
+          prompt = textwrap.dedent("""
+          このプロジェクトは Fortran で記述された数値解析ソフトウェアです。
+          以下の内容に沿って、Quarto形式のユーザーガイドを作成してください：
 
-- プロジェクト名：reborn_project2
-- 概要：2次元流れ解析、地形変化シミュレーション
-- ディレクトリ構成：src/, lib/, nays2dh/
-- 使用方法：コマンドライン実行と入力ファイルの指定
-- 出力：可視化ツールと連携可能なCGNS出力
-- 開発者向け情報：ビルド手順、依存ライブラリ
+          - プロジェクト名：reborn_project2
+          - 概要：2次元流れ解析、地形変化シミュレーション
+          - ディレクトリ構成：src/, lib/, nays2dh/
+          - 使用方法：コマンドライン実行と入力ファイルの指定
+          - 出力：可視化ツールと連携可能なCGNS出力
+          - 開発者向け情報：ビルド手順、依存ライブラリ
 
-Markdown（.qmd）形式で出力してください。
-""")
+          Markdown（.qmd）形式で出力してください。
+          """)
 
-response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
-    messages=[
-        {"role": "system", "content": "あなたは技術文書の専門家です。"},
-        {"role": "user", "content": prompt}
-    ]
-)
-with open("site/index.qmd", "w", encoding="utf-8") as f:
-    f.write(response.choices[0].message.content)
-PY
+          resp = openai.ChatCompletion.create(
+              model="gpt-3.5-turbo",
+              messages=[
+                  {"role": "system", "content": "あなたは技術文書の専門家です。"},
+                  {"role": "user", "content": prompt}
+              ]
+          )
 
-      - name: Create Quarto project file
-        run: |
-          mkdir -p site
+          with open("site/index.qmd", "w", encoding="utf-8") as f:
+              f.write(resp.choices[0].message.content)
+          PY
+
+          # Quarto プロジェクト設定
           printf '%s\n' \
             'project:' \
             '  type: website' \
