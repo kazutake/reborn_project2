@@ -1,4 +1,4 @@
-name: Build and Deploy Quarto Docs
+name: Generate and Deploy Quarto Documentation
 
 on:
   workflow_dispatch:
@@ -8,45 +8,73 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
+      - name: 🧾 Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: 📦 Install OpenAI SDK (v0.28)
         run: pip install openai==0.28
 
-      - name: Generate Quarto documentation using ChatGPT
+      - name: 🤖 Generate Quarto documentation with ChatGPT
         run: |
           mkdir -p site
           python3 <<EOF
           import openai, os
           openai.api_key = os.getenv("OPENAI_API_KEY")
+
+          prompt = """
+          このプロジェクトは Fortran で記述された数値解析ソフトウェアです。
+          以下の内容に沿って、Quarto形式のユーザーガイドを作成してください：
+
+          - プロジェクト名：reborn_project2
+          - 概要：2次元流れ解析、地形変化シミュレーション
+          - ディレクトリ構成：src/, lib/, nays2dh/
+          - 使用方法：コマンドライン実行と入力ファイルの指定
+          - 出力：可視化ツールと連携可能なCGNS出力
+          - 開発者向け情報：ビルド手順、依存ライブラリ
+
+          Markdown（.qmd）形式で出力してください。
+          """
+
           res = openai.ChatCompletion.create(
               model="gpt-3.5-turbo",
               messages=[
-                  {"role": "system", "content": "You are a technical documentation assistant."},
-                  {"role": "user", "content": "以下のFortranプロジェクト reborn_project2 の説明書をQuarto形式で作ってください。"}
+                  {"role": "system", "content": "あなたは技術文書の専門家です。"},
+                  {"role": "user", "content": prompt}
               ]
           )
+
+          content = res.choices[0].message.content
+
           with open("site/index.qmd", "w") as f:
-              f.write(res.choices[0].message.content)
+              f.write(content)
           EOF
+
+          # Create Quarto project config
+          echo "project:
+  type: website
+
+format:
+  html:
+    toc: true
+    theme: cosmo
+" > site/quarto.yml
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      - name: Install Quarto
+      - name: 🧰 Install Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: Render site
+      - name: 🏗 Render Quarto site
         run: |
           cd site
           quarto render .
 
-      - name: Deploy to GitHub Pages
+      - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
